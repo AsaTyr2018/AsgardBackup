@@ -47,6 +47,7 @@ Main Landuage: German
 | **Deduplikation**              | Erkennung gleicher Dateien per Hash (z. B. SHA256 oder `blake3`)              |
 | **Speicherbereinigung**        | Älteste Versionen werden gelöscht, wenn das Limit erreicht ist                |
 | **Storage-Backend flexibel**   | Lokaler Speicher, NFS, Ceph, S3-kompatibel – je nachdem wie fancy du’s willst |
+| **Admin-Webinterface**         | Verwaltung der API-Token über ein Login-geschütztes Webinterface |
 
 ---
 
@@ -122,6 +123,7 @@ AsgardBackup/
 | **Hash-Prüfung**          | Nur geänderte Dateien sichern         |
 | **Restore-Option**        | Per Kommandozeile wiederherstellen    |
 | **Plattformübergreifend** | Windows & Linux, Fokus auf User-Daten |
+| **Admin-Webinterface**    | API-Verwaltung über Login-Seite, Admin wird per CLI erstellt |
 
 ---
 
