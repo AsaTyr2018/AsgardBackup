@@ -62,6 +62,8 @@ Für Linux steht eine Kommandozeile zur Verfügung, für Windows eine kleine GUI
   ```
   Die Oberfläche zeigt links die vorhandenen Dateien und rechts die zugehörigen Versionen.
   Oben wird die aktuell ausgewählte Version eingeblendet.
+  Nach dem Login wird automatisch der Windows-Bilderordner gesichert. Zudem kann der Ordner über den Button "Bilder-Backup" manuell hochgeladen werden.
+  Beim Wiederherstellen zeigt eine Fortschrittsanzeige den Download-Status an.
   
 
 ## Feature-Checkliste
