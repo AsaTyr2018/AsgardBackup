@@ -23,6 +23,20 @@ Main Landuage: German
 
 ---
 
+Client:
+Der Client erkennt anhand des aktiven User namens (Windows und Linux) wer angemeldet ist und meldet dies an den Server. Login erfolgt mittels API.
+User werden am Backup Server automatisch angelegt bei API anmeldung.
+Zwischen Server und Client gibt es eine Daten Kommunkation.
+User können über den Client daten manuell sichern oder Restoren.
+Beim start des Clients gibt es ein Full Backup. Ist dieser abgeschlossen werden nur noch Inkrementelle durchgeführt.
+
+Server:
+Der Server managed und Verwaltet die Backups.
+Speicher Per User.
+4 Versionen jeh datei in Rückhaltung (Konfigurierbar)
+Duplikats erkennung anhand des Daten hashes. Automatisches Versionieren.
+
+
 ## **Modul-Struktur-Vorschlag:**
 
 ```
