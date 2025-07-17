@@ -23,6 +23,23 @@ python server.py create-admin <benutzername> <passwort>
 Anschließend kann der Server gestartet werden (wie oben beschrieben oder mit `python server.py serve`).
 Der Admin meldet sich über das Webformular unter `/admin/login` an (kein HTTP-Auth).
 
+## Clients
+
+Für Linux steht eine Kommandozeile zur Verfügung, für Windows eine kleine GUI.
+
+- **CLI (Linux):**
+  ```bash
+  python client_cli.py login --server http://<server>:8000
+  python client_cli.py upload <Datei>
+  ```
+  Nach dem ersten Login wird der erhaltene Token in `~/.asgard_client.json` gespeichert.
+
+- **GUI (Windows):**
+  ```bash
+  python client_gui.py
+  ```
+  Dort können Serveradresse und API‑Token eingegeben sowie Dateien hochgeladen und wiederhergestellt werden.
+
 
 ## Feature-Checkliste
 
