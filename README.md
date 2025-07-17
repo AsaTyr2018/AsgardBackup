@@ -10,6 +10,26 @@ uvicorn server:app --reload
 ```
 
 Die API steht danach auf Port 8000 zur Verfügung.
+## Maintainer-Skript
+
+Zur Installation und Aktualisierung gibt es `maintainer.sh`.
+Die Initialinstallation erfolgt mit
+
+```bash
+sudo ./maintainer.sh install <repo-url>
+```
+
+Das Skript klont das Repository nach `/opt/asgardbackup`, richtet eine Python-`venv` ein,
+installiert die Abhängigkeiten und startet den systemd-Service.
+
+Fuer Updates genuegt
+
+```bash
+sudo ./maintainer.sh update
+```
+
+Dabei wird `git pull` ausgefuehrt, die Abhaengigkeiten werden aktualisiert und der Service neu gestartet.
+
 
 ## Admin-Webinterface
 
