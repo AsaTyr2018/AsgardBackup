@@ -31,9 +31,23 @@ Der Admin meldet sich über das Webformular unter `/admin/login` an (kein HTTP-A
 - ✅ Benutzer werden automatisch angelegt
 - ✅ Getrennte Backup-Verzeichnisse je Benutzer
 - ✅ Admin-Webinterface (Token-Verwaltung)
-- ☑️ Versionierung (max. 4 Versionen)
-- ☑️ Deduplikation per Hash-Prüfung
-- ☑️ Blacklist-Backup
+- ✅ Versionierung (max. 4 Versionen)
+- ✅ Deduplikation per Hash-Prüfung
+- ✅ Blacklist-Backup
 - ☑️ Wiederherstellung per Kommandozeile
 - ☑️ Plattformübergreifend: Windows und Linux
+
+### Versionierung und Deduplikation
+
+Hochgeladene Dateien werden in einem Unterordner mit dem Dateinamen
+gespeichert. Jede Version erhält einen Zeitstempel als Namen. Der Server
+bewahrt maximal vier Versionen einer Datei auf und entfernt automatisch die
+ältesten. Bevor eine neue Version angelegt wird, vergleicht der Server den
+Hashwert aller vorhandenen Versionen und überspringt identische Dateien.
+
+### Backup-Blacklist
+
+Bestimmte Pfade oder Dateinamen können vom Backup ausgeschlossen werden. Die
+Blacklist ist derzeit statisch im Code hinterlegt. Enthält der übertragene
+Pfad einen dieser Einträge, lehnt der Server die Datei ab.
 
