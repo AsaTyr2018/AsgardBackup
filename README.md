@@ -34,10 +34,12 @@ Dabei wird `git pull` ausgefuehrt, die Abhaengigkeiten werden aktualisiert und d
 ## Admin-Webinterface
 
 Die Verwaltung der API-Token erfolgt über ein kleines Webinterface unter `/admin`.
-Nach der Installation muss zunächst ein Administrator über die Kommandozeile angelegt werden:
+Nach der Installation muss zunächst ein Administrator über die Kommandozeile angelegt werden.
+Da die Datenbank im Installationsverzeichnis liegt, sind hierfür Root-Rechte notwendig.
+Nutze dabei explizit das Python der eingerichteten venv:
 
 ```bash
-python server.py create-admin <benutzername> <passwort>
+sudo ./venv/bin/python server.py create-admin <benutzername> <passwort>
 ```
 
 Anschließend kann der Server gestartet werden (wie oben beschrieben oder mit `python server.py serve`).
