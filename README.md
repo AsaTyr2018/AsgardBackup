@@ -11,3 +11,15 @@ uvicorn server:app --reload
 
 Die API steht danach auf Port 8000 zur Verfügung.
 
+## Admin-Webinterface
+
+Die Verwaltung der API-Token erfolgt über ein kleines Webinterface unter `/admin`.
+Nach der Installation muss zunächst ein Administrator über die Kommandozeile angelegt werden:
+
+```bash
+python server.py create-admin <benutzername> <passwort>
+```
+
+Anschließend kann der Server gestartet werden (wie oben beschrieben oder mit `python server.py serve`).
+Der Admin meldet sich über das Webformular unter `/admin/login` an (kein HTTP-Auth).
+
