@@ -60,8 +60,9 @@ Für Linux steht eine Kommandozeile zur Verfügung, für Windows eine kleine GUI
   ```bash
   python client_gui.py
   ```
-  Dort können Serveradresse und API‑Token eingegeben sowie Dateien hochgeladen und wiederhergestellt werden.
-
+  Die Oberfläche zeigt links die vorhandenen Dateien und rechts die zugehörigen Versionen.
+  Oben wird die aktuell ausgewählte Version eingeblendet.
+  
 
 ## Feature-Checkliste
 

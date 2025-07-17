@@ -4,7 +4,7 @@ import hashlib
 import requests
 from pathlib import Path
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 
 CONFIG_PATH = Path.home() / ".asgard_client.json"
 
@@ -40,20 +40,47 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("AsgardBackup Client")
+
         cfg = load_config()
         self.server_var = tk.StringVar(value=cfg.get("server", ""))
         self.token_var = tk.StringVar(value=cfg.get("token", ""))
+        self.version_var = tk.StringVar(value="Keine Version gewählt")
+        self.files: dict[str, list[str]] = {}
 
+        # Eingabefelder und Buttons
         tk.Label(self, text="Server-Adresse").grid(row=0, column=0, sticky="w")
-        tk.Entry(self, textvariable=self.server_var, width=40).grid(row=0, column=1)
+        tk.Entry(self, textvariable=self.server_var, width=40).grid(row=0, column=1, columnspan=2, sticky="we")
         tk.Label(self, text="API Token").grid(row=1, column=0, sticky="w")
-        tk.Entry(self, textvariable=self.token_var, width=40).grid(row=1, column=1)
+        tk.Entry(self, textvariable=self.token_var, width=40).grid(row=1, column=1, columnspan=2, sticky="we")
         tk.Button(self, text="Login", command=self.login).grid(row=2, column=0, pady=5)
         tk.Button(self, text="Datei hochladen", command=self.upload).grid(row=2, column=1, pady=5)
-        tk.Button(self, text="Dateien auflisten", command=self.list_files).grid(row=3, column=0, pady=5)
-        tk.Button(self, text="Wiederherstellen", command=self.restore).grid(row=3, column=1, pady=5)
-        self.output = tk.Text(self, height=10, width=60)
-        self.output.grid(row=4, column=0, columnspan=2, pady=5)
+        tk.Button(self, text="Dateien laden", command=self.list_files).grid(row=2, column=2, pady=5)
+
+        tk.Label(self, textvariable=self.version_var, font=("Arial", 10, "bold")).grid(row=3, column=0, columnspan=3, pady=(5, 0))
+
+        # Dateiansicht
+        paned = ttk.Panedwindow(self, orient="horizontal")
+        paned.grid(row=4, column=0, columnspan=3, sticky="nsew")
+        self.grid_rowconfigure(4, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(2, weight=1)
+
+        left = ttk.Frame(paned)
+        right = ttk.Frame(paned)
+        paned.add(left, weight=1)
+        paned.add(right, weight=1)
+
+        ttk.Label(left, text="Dateien").pack(anchor="w")
+        self.file_list = tk.Listbox(left)
+        self.file_list.pack(fill="both", expand=True)
+        self.file_list.bind("<<ListboxSelect>>", self.on_file_select)
+
+        ttk.Label(right, text="Versionen").pack(anchor="w")
+        self.version_list = tk.Listbox(right)
+        self.version_list.pack(fill="both", expand=True)
+        self.version_list.bind("<<ListboxSelect>>", self.on_version_select)
+        ttk.Button(right, text="Herunterladen", command=self.restore).pack(pady=5)
 
     def login(self):
         server = self.server_var.get()
@@ -101,12 +128,33 @@ class App(tk.Tk):
             return
         resp = requests.get(f"{server}/api/list", headers={"X-Token": token})
         resp.raise_for_status()
-        self.output.delete(1.0, tk.END)
         data = resp.json()["files"]
-        for fname, versions in data.items():
-            self.output.insert(tk.END, f"{fname}\n")
-            for v in versions:
-                self.output.insert(tk.END, f"  {v}\n")
+        self.files = data
+        self.file_list.delete(0, tk.END)
+        self.version_list.delete(0, tk.END)
+        self.version_var.set("Keine Version gewählt")
+        for fname in sorted(data.keys()):
+            self.file_list.insert(tk.END, fname)
+
+    def on_file_select(self, event):
+        sel = self.file_list.curselection()
+        if not sel:
+            return
+        fname = self.file_list.get(sel[0])
+        versions = self.files.get(fname, [])
+        self.version_list.delete(0, tk.END)
+        for v in versions:
+            self.version_list.insert(tk.END, v)
+        if versions:
+            self.version_list.selection_set(len(versions) - 1)
+            self.version_var.set(versions[-1])
+        else:
+            self.version_var.set("Keine Version verfügbar")
+
+    def on_version_select(self, event):
+        sel = self.version_list.curselection()
+        if sel:
+            self.version_var.set(self.version_list.get(sel[0]))
 
     def restore(self):
         server = self.server_var.get()
@@ -114,13 +162,18 @@ class App(tk.Tk):
         if not server or not token:
             messagebox.showerror("Fehler", "Bitte zuerst Login durchführen")
             return
-        filename = filedialog.askopenfilename(title="Datei wählen für Restore")
-        if not filename:
+        sel_file = self.file_list.curselection()
+        if not sel_file:
+            messagebox.showerror("Fehler", "Keine Datei ausgewählt")
             return
-        name = os.path.basename(filename)
+        name = self.file_list.get(sel_file[0])
+        version = self.version_var.get()
+        if version.startswith("Keine"):
+            messagebox.showerror("Fehler", "Keine Version gewählt")
+            return
         resp = requests.post(
             f"{server}/api/restore",
-            params={"filename": name},
+            params={"filename": name, "version": version},
             headers={"X-Token": token},
         )
         resp.raise_for_status()
