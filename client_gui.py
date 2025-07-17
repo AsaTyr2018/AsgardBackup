@@ -1,6 +1,7 @@
 import os
 import json
 import hashlib
+import threading
 import requests
 from pathlib import Path
 import tkinter as tk
@@ -55,16 +56,18 @@ class App(tk.Tk):
         tk.Button(self, text="Login", command=self.login).grid(row=2, column=0, pady=5)
         tk.Button(self, text="Datei hochladen", command=self.upload).grid(row=2, column=1, pady=5)
         tk.Button(self, text="Dateien laden", command=self.list_files).grid(row=2, column=2, pady=5)
+        tk.Button(self, text="Bilder-Backup", command=self.backup_pictures).grid(row=2, column=3, pady=5)
 
-        tk.Label(self, textvariable=self.version_var, font=("Arial", 10, "bold")).grid(row=3, column=0, columnspan=3, pady=(5, 0))
+        tk.Label(self, textvariable=self.version_var, font=("Arial", 10, "bold")).grid(row=3, column=0, columnspan=4, pady=(5, 0))
 
         # Dateiansicht
         paned = ttk.Panedwindow(self, orient="horizontal")
-        paned.grid(row=4, column=0, columnspan=3, sticky="nsew")
+        paned.grid(row=4, column=0, columnspan=4, sticky="nsew")
         self.grid_rowconfigure(4, weight=1)
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
         self.grid_columnconfigure(2, weight=1)
+        self.grid_columnconfigure(3, weight=1)
 
         left = ttk.Frame(paned)
         right = ttk.Frame(paned)
@@ -90,6 +93,7 @@ class App(tk.Tk):
         token = ensure_token(server)
         self.token_var.set(token)
         messagebox.showinfo("Info", "Token gespeichert")
+        threading.Thread(target=self.backup_pictures, daemon=True).start()
 
     def upload(self):
         server = self.server_var.get()
@@ -100,8 +104,14 @@ class App(tk.Tk):
         path = filedialog.askopenfilename()
         if not path:
             return
-        filename = os.path.basename(path)
-        h = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+        self.upload_file(Path(path))
+        messagebox.showinfo("Erfolg", "Upload abgeschlossen")
+
+    def upload_file(self, path: Path):
+        server = self.server_var.get()
+        token = self.token_var.get()
+        filename = path.name
+        h = hashlib.sha256(path.read_bytes()).hexdigest()
         check = requests.post(
             f"{server}/api/check",
             params={"filename": filename, "filehash": h},
@@ -109,7 +119,6 @@ class App(tk.Tk):
         )
         check.raise_for_status()
         if check.json().get("exists"):
-            messagebox.showinfo("Info", "Datei bereits vorhanden")
             return
         with open(path, "rb") as f:
             resp = requests.post(
@@ -118,7 +127,15 @@ class App(tk.Tk):
                 headers={"X-Token": token, "username": os.environ.get("USERNAME") or os.environ.get("USER") or "unknown"},
             )
         resp.raise_for_status()
-        messagebox.showinfo("Erfolg", "Upload abgeschlossen")
+
+    def backup_pictures(self):
+        """Sichert automatisch den Bilder-Ordner."""
+        pics = Path.home() / "Pictures"
+        if not pics.is_dir():
+            return
+        for file in pics.rglob("*"):
+            if file.is_file():
+                self.upload_file(file)
 
     def list_files(self):
         server = self.server_var.get()
@@ -175,13 +192,29 @@ class App(tk.Tk):
             f"{server}/api/restore",
             params={"filename": name, "version": version},
             headers={"X-Token": token},
+            stream=True,
         )
         resp.raise_for_status()
         out_path = filedialog.asksaveasfilename(initialfile=name)
         if not out_path:
             return
+        total = int(resp.headers.get("Content-Length", 0))
+        prog = tk.Toplevel(self)
+        prog.title("Download")
+        ttk.Label(prog, text="Lade herunter...").pack(padx=10, pady=5)
+        bar = ttk.Progressbar(prog, length=300)
+        bar.pack(padx=10, pady=10)
+        downloaded = 0
         with open(out_path, "wb") as f:
-            f.write(resp.content)
+            for chunk in resp.iter_content(chunk_size=8192):
+                if not chunk:
+                    continue
+                f.write(chunk)
+                downloaded += len(chunk)
+                if total:
+                    bar["value"] = downloaded / total * 100
+                    prog.update_idletasks()
+        prog.destroy()
         messagebox.showinfo("Fertig", f"Gespeichert unter {out_path}")
 
 
