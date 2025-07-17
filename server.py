@@ -13,11 +13,23 @@ import os
 import secrets
 import hashlib
 import sqlite3
+from datetime import datetime
 
 app = FastAPI(title="AsgardBackup Server")
 
 STORAGE_ROOT = os.path.join(os.path.dirname(__file__), "storage")
 TOKENS = {}
+
+MAX_VERSIONS = 4
+BLACKLIST = [
+    "C:/Windows",
+    "C:/Program Files",
+    "C:/Program Files (x86)",
+    "C:/ProgramData",
+    "AppData/Local",
+    "$Recycle.Bin",
+    "System Volume Information",
+]
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "asgard.db")
 
@@ -107,44 +119,83 @@ async def login(username: str):
 
 
 @app.post("/api/upload")
-async def upload(file: UploadFile = File(...), username: str = Header(...), x_token: str | None = Header(None)):
+async def upload(
+    file: UploadFile = File(...),
+    username: str = Header(...),
+    x_token: str | None = Header(None),
+):
     user = get_username(x_token)
     if user != username:
         raise HTTPException(status_code=403, detail="Token passt nicht zum Benutzer")
-    user_dir = os.path.join(STORAGE_ROOT, user)
+    for pattern in BLACKLIST:
+        if pattern.lower() in file.filename.lower():
+            raise HTTPException(status_code=400, detail="Datei steht auf der Blacklist")
+    filename = os.path.basename(file.filename)
+    user_dir = os.path.join(STORAGE_ROOT, user, filename)
     os.makedirs(user_dir, exist_ok=True)
-    file_path = os.path.join(user_dir, file.filename)
+    data = await file.read()
+    incoming_hash = hashlib.sha256(data).hexdigest()
+    # Deduplikation: exists same hash?
+    for version in os.listdir(user_dir):
+        with open(os.path.join(user_dir, version), "rb") as f:
+            if hashlib.sha256(f.read()).hexdigest() == incoming_hash:
+                return {"status": "Duplikat ignoriert"}
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    file_path = os.path.join(user_dir, timestamp)
     with open(file_path, "wb") as f:
-        f.write(await file.read())
-    return {"status": "hochgeladen"}
+        f.write(data)
+    # Versionierung: nur die letzten MAX_VERSIONS behalten
+    versions = sorted(os.listdir(user_dir))
+    while len(versions) > MAX_VERSIONS:
+        old = versions.pop(0)
+        os.remove(os.path.join(user_dir, old))
+    return {"status": "hochgeladen", "version": timestamp}
 
 
 @app.post("/api/check")
 async def check(filename: str, filehash: str, x_token: str | None = Header(None)):
     user = get_username(x_token)
-    file_path = os.path.join(STORAGE_ROOT, user, filename)
-    if not os.path.exists(file_path):
+    file_dir = os.path.join(STORAGE_ROOT, user, os.path.basename(filename))
+    if not os.path.exists(file_dir):
         return {"exists": False}
-    with open(file_path, "rb") as f:
-        data = f.read()
-    existing_hash = hashlib.sha256(data).hexdigest()
-    return {"exists": existing_hash == filehash}
+    for version in os.listdir(file_dir):
+        with open(os.path.join(file_dir, version), "rb") as f:
+            if hashlib.sha256(f.read()).hexdigest() == filehash:
+                return {"exists": True}
+    return {"exists": False}
 
 
 @app.get("/api/list")
 async def list_files(x_token: str | None = Header(None)):
     user = get_username(x_token)
     user_dir = os.path.join(STORAGE_ROOT, user)
-    files = os.listdir(user_dir) if os.path.exists(user_dir) else []
-    return {"files": files}
+    result: dict[str, list[str]] = {}
+    if os.path.exists(user_dir):
+        for fname in os.listdir(user_dir):
+            fdir = os.path.join(user_dir, fname)
+            if os.path.isdir(fdir):
+                result[fname] = sorted(os.listdir(fdir))
+    return {"files": result}
 
 
 @app.post("/api/restore")
-async def restore(filename: str, x_token: str | None = Header(None)):
+async def restore(
+    filename: str,
+    version: str | None = None,
+    x_token: str | None = Header(None),
+):
     user = get_username(x_token)
-    file_path = os.path.join(STORAGE_ROOT, user, filename)
-    if not os.path.exists(file_path):
+    file_dir = os.path.join(STORAGE_ROOT, user, os.path.basename(filename))
+    if not os.path.isdir(file_dir):
         raise HTTPException(status_code=404, detail="Datei nicht gefunden")
+    versions = sorted(os.listdir(file_dir))
+    if not versions:
+        raise HTTPException(status_code=404, detail="Keine Versionen vorhanden")
+    if version is None:
+        version = versions[-1]
+    if version not in versions:
+        raise HTTPException(status_code=404, detail="Version nicht gefunden")
+    file_path = os.path.join(file_dir, version)
     return FileResponse(path=file_path, filename=filename)
 
 
