@@ -23,19 +23,79 @@ Main Landuage: German
 
 ---
 
-Client:
-Der Client erkennt anhand des aktiven User namens (Windows und Linux) wer angemeldet ist und meldet dies an den Server. Login erfolgt mittels API.
-User werden am Backup Server automatisch angelegt bei API anmeldung.
-Zwischen Server und Client gibt es eine Daten Kommunkation.
-User können über den Client daten manuell sichern oder Restoren.
-Beim start des Clients gibt es ein Full Backup. Ist dieser abgeschlossen werden nur noch Inkrementelle durchgeführt.
+### **Client-Funktionalität:**
 
-Server:
-Der Server managed und Verwaltet die Backups.
-Speicher Per User.
-4 Versionen jeh datei in Rückhaltung (Konfigurierbar)
-Duplikats erkennung anhand des Daten hashes. Automatisches Versionieren.
+| Funktion                                | Beschreibung                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------------ |
+| **User-Detection**                      | Erkennt automatisch den angemeldeten User (Windows: `USERNAME`, Linux: `USER`) |
+| **Server-Login per API**                | Erstverbindung meldet User automatisch am Server an                            |
+| **Self-Registration**                   | Kein manuelles Anlegen von Usern nötig                                         |
+| **Full-Backup bei Erstlauf**            | Beim ersten Run wird der komplette erlaubte Datenbereich gesichert             |
+| **Inkrementelles Backup danach**        | Nur geänderte Dateien werden gesichert                                         |
+| **Manuelles Backup/Restore per Client** | GUI oder CLI: Benutzer können selbst sichern und wiederherstellen              |
+| **Kommunikation**                       | REST-API mit Token-Auth, optional JWT oder OAuth später                        |
 
+---
+
+### **Server-Funktionalität:**
+
+| Funktion                       | Beschreibung                                                                  |
+| ------------------------------ | ----------------------------------------------------------------------------- |
+| **User-Management**            | User werden automatisch angelegt bei API-Login                                |
+| **Backup-Verwaltung per User** | Separater Speicherbereich je User (`/backups/<user>/…`)                       |
+| **Versionierung**              | Pro Datei max. 4 Versionen (konfigurierbar, z. B. über `config.yaml`)         |
+| **Deduplikation**              | Erkennung gleicher Dateien per Hash (z. B. SHA256 oder `blake3`)              |
+| **Speicherbereinigung**        | Älteste Versionen werden gelöscht, wenn das Limit erreicht ist                |
+| **Storage-Backend flexibel**   | Lokaler Speicher, NFS, Ceph, S3-kompatibel – je nachdem wie fancy du’s willst |
+
+---
+
+## **API-Kommunikation:**
+
+| Aktion                             | API Endpoint   | Methode                                                               |
+| ---------------------------------- | -------------- | --------------------------------------------------------------------- |
+| **Login & Registrierung**          | `/api/login`   | `POST`                                                                |
+| **Backup Upload**                  | `/api/upload`  | `POST` (Multipart-File-Upload)                                        |
+| **Backup Prüfen (Hash-Vergleich)** | `/api/check`   | `POST` (Hash wird übertragen, Server prüft, ob Datei schon vorhanden) |
+| **Dateien listen (Versionen)**     | `/api/list`    | `GET`                                                                 |
+| **Restore anfordern**              | `/api/restore` | `POST` (gibt Datei zurück)                                            |
+
+---
+
+## **Ablauf des Backups:**
+
+1. **Client-Start**
+   → Erkennt User
+2. **Anmeldung am Server**
+   → User wird registriert oder geauthentifiziert
+3. **Erstes Full-Backup**
+   → Alles wird hochgeladen, was nicht in der Blacklist steht
+4. **Nachfolgende Backups:**
+   → Nur geänderte Dateien (per Hash-Prüfung)
+5. **Server verwaltet Versionen & Dedupe**
+   → Bei mehr als 4 Versionen: Älteste wird entfernt
+
+---
+
+## **Technologie-Vorschlag:**
+
+| Bereich              | Technik                                                                |
+| -------------------- | ---------------------------------------------------------------------- |
+| **API-Server**       | `FastAPI` + `uvicorn` (superschnell, async, Swagger-Doku gleich dabei) |
+| **Auth**             | API-Token (z. B. per `secrets.token_hex()`), später JWT möglich        |
+| **Storage-Handling** | Python mit `os`, `hashlib` oder `blake3`, evtl. `sqlite` für Metadaten |
+| **Client-GUI**       | Optional `PySimpleGUI` oder `tkinter`, CLI sowieso                     |
+| **Transport**        | HTTPS mit SSL/TLS, self-signed für intern reicht                       |
+
+---
+
+## **Zusatzoptionen für später:**
+
+* **Compression on-the-fly** (z. B. mit `zstd` für schnelle Kompression)
+* **Backup-Encryption per Client** (AES256 mit `cryptography`, optional)
+* **Push-Notifications / Mail-Reports**
+* **Monitoring-Endpoint fürs AsgardBackup-Cluster**
+* **Multi-Storage-Backend (Local, S3, MinIO)**
 
 ## **Modul-Struktur-Vorschlag:**
 
