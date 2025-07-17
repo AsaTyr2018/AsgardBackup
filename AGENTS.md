@@ -82,3 +82,13 @@ user_folders:
 - Container-Daten wie `/var/lib/docker` nur sichern, falls erforderlich.
 
 Weitere Ideen wie Kompression, Verschlüsselung oder Multi-Storage können später umgesetzt werden. Details stehen in `ideas.md`.
+
+## Entwicklungsplan: Server/Client-Architektur
+Dieser Abschnitt fasst die grobe Planung zusammen, die aus `ideas.md` und den bisherigen Diskussionen hervorgeht.
+
+1. **Server auf Linux**: Umsetzung mit FastAPI und uvicorn. Token-Authentifizierung; Nutzer werden beim Login automatisch angelegt.
+2. **Clients**: Windows und Linux werden unterstützt. Beim ersten Start registriert sich der Client selbst und führt ein Vollbackup durch.
+3. **API-Endpunkte**: `/api/login`, `/api/upload`, `/api/check`, `/api/list`, `/api/restore`. Alle Aktionen erfolgen per HTTPS.
+4. **Speicherstruktur**: Pro Benutzer ein eigener Ordner unterhalb von `storage/`; Versionierung und Hash-basierte Deduplikation werden später ausgebaut.
+
+Die anfängliche Implementierung konzentriert sich auf ein minimales Gerüst des Servers. Weitere Features können Schritt für Schritt ergänzt werden.
